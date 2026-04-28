@@ -10,7 +10,7 @@ import sqlite3
 from contextlib import closing
 from datetime import date, datetime
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Sequence, Tuple
+from typing import Any, Dict, List, Sequence, Tuple
 
 import requests
 
@@ -401,7 +401,7 @@ def group_by_field(
     return sorted(aggregates.items(), key=lambda item: item[1]["sum"], reverse=True)
 
 
-def _build_dataframe(rows: List[Dict[str, Any]]) -> "pd.DataFrame":
+def _build_dataframe(rows: List[Dict[str, Any]]) -> "pd.DataFrame":  # noqa: F821
     import pandas as pd
 
     if not rows:
