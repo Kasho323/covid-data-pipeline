@@ -50,6 +50,15 @@ def test_clean_data_fill_zero():
     assert clean[0]["cases"] == 0
 
 
+
+
+def test_clean_data_fill_zero_uses_unknown_for_text_fields():
+    raw_data = [{"country": None, "cases": None, "date": None}]
+    clean = main.clean_data(raw_data, missing_policy="fill-zero")
+    assert clean[0]["country"] == "UNKNOWN"
+    assert clean[0]["date"] == "UNKNOWN"
+    assert clean[0]["cases"] == 0
+
 def test_filter_by_country():
     data = [
         {"country": "UK", "cases": 100},
@@ -208,3 +217,28 @@ def test_db_crud_flow(tmp_path):
     rows = main.list_db_records(db_path=db_path, table="obs", limit=5)
     assert rows == []
 
+
+
+def test_clean_data_invalid_policy_raises():
+    with pytest.raises(ValueError):
+        main.clean_data([{"country": "UK", "cases": None}], missing_policy="bad-policy")
+
+
+def test_load_data_from_db_round_trip(tmp_path):
+    db_path = tmp_path / "task.sqlite"
+    records = [{"country": "UK", "cases": 5, "date": "2024-01-01"}]
+    main.insert_records_into_db(
+        records,
+        db_path=db_path,
+        table="obs",
+        stats_field="cases",
+        source_label="test",
+    )
+    loaded = main.load_data_from_db(db_path=db_path, table="obs", stats_field="cases")
+    assert loaded == [{
+        "country": "UK",
+        "date": "2024-01-01",
+        "cases": 5.0,
+        "source": "test",
+        "raw_json": '{"country": "UK", "cases": 5, "date": "2024-01-01"}',
+    }]

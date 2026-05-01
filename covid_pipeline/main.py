@@ -98,6 +98,12 @@ def clean_data(
     clamp_negative: when True, negative numeric values become 0.
     """
 
+    valid_policies = {"drop", "fill-zero", "fill-value"}
+    if missing_policy not in valid_policies:
+        raise ValueError(f"Unsupported missing_policy '{missing_policy}'. Expected one of {sorted(valid_policies)}.")
+
+    text_like_fields = {"country", "date", "source"}
+
     cleaned: List[Dict[str, Any]] = []
     for rec in data:
         record = {}
@@ -118,12 +124,10 @@ def clean_data(
                 continue
             elif missing_policy == "fill-zero":
                 for key in missing_keys:
-                    record[key] = 0
+                    record[key] = "UNKNOWN" if key.lower() in text_like_fields else 0
             elif missing_policy == "fill-value":
                 for key in missing_keys:
                     record[key] = fill_value
-            else:
-                continue
         cleaned.append(record)
     return cleaned
 
@@ -305,6 +309,15 @@ def load_data_from_uk_covid(
     return normalized
 
 
+def _row_value(row: sqlite3.Row, key: str) -> Any:
+    """Safely read a value from sqlite3.Row.
+
+    sqlite3.Row supports mapping-style indexing but not dict.get in all Python versions.
+    """
+
+    return row[key] if key in row.keys() else None
+
+
 def load_data_from_db(
     *,
     db_path: Path | str,
@@ -335,10 +348,10 @@ def load_data_from_db(
         shaped.append(
             {
                 "country": row["country"],
-                date_field: row.get("date"),
-                stats_field: row.get("metric_value"),
-                "source": row.get("source"),
-                "raw_json": row.get("raw_json"),
+                date_field: _row_value(row, "date"),
+                stats_field: _row_value(row, "metric_value"),
+                "source": _row_value(row, "source"),
+                "raw_json": _row_value(row, "raw_json"),
             }
         )
     return shaped
